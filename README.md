@@ -1,2 +1,2 @@
 # githubactionazure
-githubactionazure 
+githubactionazure u
