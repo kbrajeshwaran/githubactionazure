@@ -27,5 +27,5 @@ provider "azurerm" {
 # Create a resource group
 resource "azurerm_resource_group" "rg" {
   name     = "github-azure-cicd-rg"
-  location = "East US"
+  location = "westus"
 }
