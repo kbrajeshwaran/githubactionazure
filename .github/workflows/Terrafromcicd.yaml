@@ -1,11 +1,9 @@
-name: 'terraform-Azure-github& cicd'
+name: 'terraform-Azure'
 
 on:
   push:
     branches:
       - main
-    paths:
-      - "/actions/terraform-azure/*"
   pull_request:
     branches:
       - main
@@ -17,12 +15,12 @@ defaults:
   run:
     shell: bash
 env: 
-  ROOT_PATH: '${{github.workspace}}/actions/terraform-azure'
+  ROOT_PATH: '${{github.workspace}}/dev'
   ARM_CLIENT_ID: ${{secrets.AZURE_CLIENT_ID}}
   ARM_CLIENT_SECRET: ${{secrets.AZURE_CLIENT_SECRET}}
   ARM_SUBSCRIPTION_ID: ${{secrets.AZURE_SUBSCRIPTION_ID}}
   ARM_TENANT_ID: ${{secrets.AZURE_TENANT_ID}}
- 
+
 
 jobs:
   terraform_plan:
@@ -42,10 +40,13 @@ jobs:
       run: terraform init
       working-directory: ${{ env.ROOT_PATH }}
 
+    - name: terraform fmt
+      run: terraform fmt
+      working-directory: ${{ env.ROOT_PATH }}
+
     - name: terraform Plan
       run: terraform plan 
       working-directory: ${{ env.ROOT_PATH }}
-      
 
   terraform_apply:
     name: 'terraform apply'
