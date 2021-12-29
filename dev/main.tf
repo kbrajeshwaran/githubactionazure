@@ -6,7 +6,7 @@ terraform {
     }
   }
 
- backend "azurerm" {
+  backend "azurerm" {
     resource_group_name  = "terraformstate-rg"
     storage_account_name = "githubcicd20955"
     container_name       = "githubcicd"
@@ -29,9 +29,9 @@ resource "azurerm_resource_group" "rg" {
   name     = "github-azure-cicd-rg"
   location = "westus"
 
-   tags = {
-    Createdby ="Rajeshwaran"
+  tags = {
+    Createdby   = "Rajeshwaran"
     environment = "dev"
-    Project = " github -CICD-Checkov"
+    Project     = " github -CICD-Checkov"
   }
 }
