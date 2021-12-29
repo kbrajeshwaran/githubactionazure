@@ -31,7 +31,6 @@ resource "azurerm_resource_group" "rg" {
 
   tags = {
     Createdby   = "Rajeshwaran"
-    environment = "dev"
     Project     = " github -CICD-Checkov"
     IACtool  = " Terraform"
     Technology = " IT"
