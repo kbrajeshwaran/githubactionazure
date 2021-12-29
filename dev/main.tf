@@ -33,5 +33,6 @@ resource "azurerm_resource_group" "rg" {
     Createdby   = "Rajeshwaran"
     environment = "dev"
     Project     = " github -CICD-Checkov"
+    IACtool  = "Terraform"
   }
 }
