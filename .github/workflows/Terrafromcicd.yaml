@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - main
+      - checkov
   pull_request:
     branches:
       - main
+      - checkov
   workflow_dispatch: #this attribute will enable the manual run to the pipeline
   
 
@@ -14,7 +16,7 @@ on:
 defaults:
   run:
     shell: bash
-    working-directory: dev
+    working-directory: ./dev
 env: 
   ROOT_PATH: '${{github.workspace}}/dev'
   ARM_CLIENT_ID: ${{secrets.AZURE_CLIENT_ID}}
@@ -26,7 +28,7 @@ jobs:
   terraform:
     name: 'Terraform'
     runs-on: ubuntu-latest
-
+    
     steps:
     # Checkout the repository to the GitHub Actions runner
     - name: Checkout
@@ -36,13 +38,13 @@ jobs:
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v1
       with:
-        cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
 
     - name: Run Checkov action
       id: checkov
       uses: bridgecrewio/checkov-action@master
       with:
-        directory: dev
+        directory: ./dev
         soft_fail: true
 
     # Checks that all Terraform configuration files adhere to a canonical format
@@ -66,28 +68,26 @@ jobs:
       run: terraform plan -no-color
       continue-on-error: true
 
-    - uses: actions/github-script@v4.1.0
+    - name: add plan comments
+      uses: actions/github-script@v4.1.0
       if: github.event_name == 'pull_request'
       env:
-          PLAN: "terraform\n$"
+          PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
       with:
           cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
           script: |
-            const output = `#### Terraform Format and Style 🖌\`$\`
-            #### Terraform Initialization ⚙️\`$\`
-            #### Terraform Validation 🤖\`$\`
-            #### Terraform Plan 📖\`$\`
-            #### Static Security Analysis 🕵️‍♀️\`$\`
+           const output = `#### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
+           #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
+           #### Terraform Validation 🤖${{ steps.validate.outputs.stdout }}
+           #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
             
             <details><summary>Show Plan</summary>
 
-            \`\`\`\n
-            ${process.env.PLAN}
-            \`\`\`
-
+            \`\`\`${process.env.PLAN}\`\`\`
+            
             </details>
 
-            *Pusher: @$, Action: \`$\`*`;
+            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Working Directory: \`${{ env.tf_actions_working_dir }}\`, Workflow: \`${{ github.workflow }}\`*`;
            
             github.issues.createComment({
               issue_number: context.issue.number,
