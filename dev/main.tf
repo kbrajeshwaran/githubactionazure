@@ -28,4 +28,10 @@ provider "azurerm" {
 resource "azurerm_resource_group" "rg" {
   name     = "github-azure-cicd-rg"
   location = "westus"
+
+   tags = {
+    Created by ="Rajeshwaran"
+    environment = "dev"
+    Project = " github -CICD-Checkov"
+  }
 }

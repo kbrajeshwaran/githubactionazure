@@ -1,4 +1,4 @@
-name: 'terraform-Azure'
+name: 'terraform-azure-github-cicd & Checkov'
 
 on:
   push:
@@ -14,6 +14,7 @@ on:
 defaults:
   run:
     shell: bash
+    working-directory: dev
 env: 
   ROOT_PATH: '${{github.workspace}}/dev'
   ARM_CLIENT_ID: ${{secrets.AZURE_CLIENT_ID}}
@@ -21,103 +22,86 @@ env:
   ARM_SUBSCRIPTION_ID: ${{secrets.AZURE_SUBSCRIPTION_ID}}
   ARM_TENANT_ID: ${{secrets.AZURE_TENANT_ID}}
 
-
 jobs:
-  terraform_plan:
-    name: 'terraform plan'
+  terraform:
+    name: 'Terraform'
     runs-on: ubuntu-latest
-    
+
     steps:
+    # Checkout the repository to the GitHub Actions runner
     - name: Checkout
       uses: actions/checkout@v2
 
-    - name: Setup terraform
+    # Install the latest version of Terraform CLI and configure the Terraform CLI configuration file with a Terraform Cloud user API token
+    - name: Setup Terraform
       uses: hashicorp/setup-terraform@v1
       with:
         cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
-  
-    - name: terraform init
+
+    - name: Run Checkov action
+      id: checkov
+      uses: bridgecrewio/checkov-action@master
+      with:
+        directory: dev
+        soft_fail: true
+
+    # Checks that all Terraform configuration files adhere to a canonical format
+    - name: Terraform Format
+      id: fmt
+      run: terraform fmt -check
+
+    # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
+    - name: Terraform Init
+      id: init
       run: terraform init
-      working-directory: ${{ env.ROOT_PATH }}
 
-    - name: terraform fmt
-      run: terraform fmt
-      working-directory: ${{ env.ROOT_PATH }}
+    - name: Terraform Validate
+      id: validate
+      run: terraform validate -no-color
 
-   - name: Terraform Plan
-     if: github.event_name == 'pull_request'
-     run: terraform plan -no-color
-     continue-on-error: true
-     working-directory: ${{ env.ROOT_PATH }}
+    # Generates an execution plan for Terraform
+    - name: Terraform Plan
+      id: plan
+      if: github.event_name == 'pull_request'
+      run: terraform plan -no-color
+      continue-on-error: true
 
-  - name: Update Pull Request
-    uses: actions/github-script@0.9.0
-    if: github.event_name == 'pull_request'
-    env:
-     PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
-    with:
-     github-token: ${{ secrets.GITHUB_TOKEN }}
-     script: |
-      const output = `#### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
-      #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
-      #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
-      #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
+    - uses: actions/github-script@v4.1.0
+      if: github.event_name == 'pull_request'
+      env:
+          PLAN: "terraform\n$"
+      with:
+          github-token: $
+          script: |
+            const output = `#### Terraform Format and Style 🖌\`$\`
+            #### Terraform Initialization ⚙️\`$\`
+            #### Terraform Validation 🤖\`$\`
+            #### Terraform Plan 📖\`$\`
+            #### Static Security Analysis 🕵️‍♀️\`$\`
+            
+            <details><summary>Show Plan</summary>
 
-      <details><summary>Show Plan</summary>
+            \`\`\`\n
+            ${process.env.PLAN}
+            \`\`\`
 
-      \`\`\`\n
-      ${process.env.PLAN}
-      \`\`\`
+            </details>
 
-      </details>
-
-      *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
-
-      github.issues.createComment({
-        issue_number: context.issue.number,
-        owner: context.repo.owner,
-        repo: context.repo.repo,
-        body: output
-      })
+            *Pusher: @$, Action: \`$\`*`;
+           
+            github.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
 
     - name: Terraform Plan Status
-       if: steps.plan.outcome == 'failure'
+      if: steps.plan.outcome == 'failure'
       run: exit 1
 
-  terraform_apply:
-    name: 'terraform apply'
-    needs: [terraform_plan]
-    runs-on: ubuntu-latest
-    environment: dev
-    
-    defaults:
-      run:
-        shell: bash
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v2
-
-    - name: Setup terraform
-      uses: hashicorp/setup-terraform@v1
-      with:
-        cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
- 
-    - name: terraform Init
-      run: terraform init
-      working-directory: ${{ env.ROOT_PATH }}
-
-    - name: terraform Init
-      run: echo 'var -> ${{inputs.tf_destroy}}'
-      working-directory: ${{ env.ROOT_PATH }}
-
-      #github.ref == 'refs/heads/main' && github.event_name == 'push'
-    - name: terraform Apply
+      # On push to main, build or change infrastructure according to Terraform configuration files
+      # Note: It is recommended to set up a required "strict" status check in your repository for "Terraform Cloud". See the documentation on "strict" required status checks for more information: https://help.github.com/en/github/administering-a-repository/types-of-required-status-checks
+    - name: Terraform Apply
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
       run: terraform apply -auto-approve
-      if: ${{inputs.tf_destroy}} == false
-      working-directory: ${{ env.ROOT_PATH }}
-
-    # - name: terraform destroy
-    #   run: terraform destroy -auto-approve
-    #   if: ${{inputs.tf_destroy}} == true
-    #   working-directory: ${{ env.ROOT_PATH }}
