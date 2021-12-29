@@ -30,7 +30,7 @@ resource "azurerm_resource_group" "rg" {
   location = "westus"
 
    tags = {
-    Created by ="Rajeshwaran"
+    Createdby ="Rajeshwaran"
     environment = "dev"
     Project = " github -CICD-Checkov"
   }
